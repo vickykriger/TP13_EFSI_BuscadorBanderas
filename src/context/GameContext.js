@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 
 const API_URL = 'https://countriesnow.space/api/v0.1/countries/flag/images';
+const ROUND_TIME = 15; // segundos por bandera
 const POINTS_HIT = 10;
 const POINTS_MISS = -1;
 
@@ -35,9 +36,10 @@ export function GameProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [score, setScore] = useState(0);
-  const [lastResult, setLastResult] = useState(null); // { type, points }
+  const [lastResult, setLastResult] = useState(null);
+  const [status, setStatus] = useState('playing'); // 'playing' | 'over'
+  const [timeLeft, setTimeLeft] = useState(ROUND_TIME);
 
-  // Al montar: traer países y elegir uno al azar
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -62,19 +64,41 @@ export function GameProvider({ children }) {
     };
   }, []);
 
+  // Cuenta regresiva (se reinicia con cada bandera nueva)
+  useEffect(() => {
+    if (status !== 'playing' || !currentCountry || timeLeft <= 0) return;
+    const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+    return () => clearTimeout(id);
+  }, [status, currentCountry, timeLeft]);
+
+  // Se acabó el tiempo => fin de la partida
+  useEffect(() => {
+    if (status === 'playing' && timeLeft <= 0) setStatus('over');
+  }, [status, timeLeft]);
+
   const nextCountry = useCallback(() => {
     setCurrentCountry((prev) => pickRandom(countries, prev));
+    setTimeLeft(ROUND_TIME);
   }, [countries]);
 
   const resetScore = useCallback(() => setScore(0), []);
 
+  const startGame = useCallback(() => {
+    setScore(0);
+    setLastResult(null);
+    setTimeLeft(ROUND_TIME);
+    setCurrentCountry((prev) => pickRandom(countries, prev));
+    setStatus('playing');
+  }, [countries]);
+
   const guess = useCallback(
     (text) => {
-      if (!currentCountry) return false;
+      if (status !== 'playing' || !currentCountry) return false;
       const isCorrect = normalize(text) === normalize(currentCountry.name);
       if (isCorrect) {
-        setScore((s) => s + POINTS_HIT);
-        setLastResult({ type: 'correct', points: POINTS_HIT });
+        const points = POINTS_HIT + timeLeft; // bonus por los segundos que sobran
+        setScore((s) => s + points);
+        setLastResult({ type: 'correct', points });
         nextCountry();
       } else {
         setScore((s) => s + POINTS_MISS);
@@ -82,7 +106,7 @@ export function GameProvider({ children }) {
       }
       return isCorrect;
     },
-    [currentCountry, nextCountry]
+    [status, currentCountry, timeLeft, nextCountry]
   );
 
   const value = {
@@ -92,9 +116,13 @@ export function GameProvider({ children }) {
     error,
     score,
     lastResult,
+    status,
+    timeLeft,
+    ROUND_TIME,
     guess,
     nextCountry,
     resetScore,
+    startGame,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
