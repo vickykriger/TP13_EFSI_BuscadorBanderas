@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_URL = 'https://countriesnow.space/api/v0.1/countries/flag/images';
 const STORAGE_KEY = 'ranking_v1';
 const ROUND_TIME = 15;
+const HINT_EVERY = 5; // segundos entre pistas automáticas
+const HINT_PENALTY = 2; // segundos que resta pedir una pista
 const POINTS_HIT = 10;
 const POINTS_MISS = -1;
 
@@ -30,13 +32,25 @@ const pickRandom = (list, exclude) => {
   return next;
 };
 
-// Guarda el mejor puntaje de cada jugador y ordena la tabla
 const upsert = (list, name, score) => {
   const found = list.find((p) => p.name.toLowerCase() === name.toLowerCase());
   const next = found
     ? list.map((p) => (p === found ? { ...p, score: Math.max(p.score, score) } : p))
     : [...list, { name, score }];
   return next.sort((a, b) => b.score - a.score);
+};
+
+const isLetter = (ch) => /[A-Za-zÀ-ÿ]/.test(ch);
+
+// Revela una letra al azar. Deja siempre al menos una oculta.
+// Si no se puede revelar más, devuelve el mismo array.
+const revealLetter = (name, revealed) => {
+  const hidden = [];
+  name.split('').forEach((ch, i) => {
+    if (isLetter(ch) && !revealed.includes(i)) hidden.push(i);
+  });
+  if (hidden.length <= 1) return revealed;
+  return [...revealed, hidden[Math.floor(Math.random() * hidden.length)]];
 };
 
 const GameContext = createContext(null);
@@ -48,12 +62,12 @@ export function GameProvider({ children }) {
   const [error, setError] = useState(null);
   const [score, setScore] = useState(0);
   const [lastResult, setLastResult] = useState(null);
-  const [status, setStatus] = useState('start'); // 'start' | 'playing' | 'over'
+  const [status, setStatus] = useState('start');
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME);
+  const [revealed, setRevealed] = useState([]); // índices de letras reveladas
   const [playerName, setPlayerName] = useState('');
-  const [ranking, setRanking] = useState([]); // [{ name, score }]
+  const [ranking, setRanking] = useState([]);
 
-  // Países
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -78,7 +92,6 @@ export function GameProvider({ children }) {
     };
   }, []);
 
-  // Cargar ranking guardado (equivalente a localStorage en React Native)
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
@@ -87,14 +100,21 @@ export function GameProvider({ children }) {
       .catch(() => {});
   }, []);
 
-  // Cuenta regresiva
   useEffect(() => {
     if (status !== 'playing' || !currentCountry || timeLeft <= 0) return;
     const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(id);
   }, [status, currentCountry, timeLeft]);
 
-  // Fin de la partida: guardar puntaje del jugador y persistir
+  // Pista automática cada HINT_EVERY segundos (sin costo)
+  useEffect(() => {
+    if (status !== 'playing' || !currentCountry) return;
+    const id = setInterval(() => {
+      setRevealed((prev) => revealLetter(currentCountry.name, prev));
+    }, HINT_EVERY * 1000);
+    return () => clearInterval(id);
+  }, [status, currentCountry]);
+
   useEffect(() => {
     if (status !== 'playing' || timeLeft > 0) return;
     setStatus('over');
@@ -106,6 +126,7 @@ export function GameProvider({ children }) {
   const nextCountry = useCallback(() => {
     setCurrentCountry((prev) => pickRandom(countries, prev));
     setTimeLeft(ROUND_TIME);
+    setRevealed([]);
   }, [countries]);
 
   const resetScore = useCallback(() => setScore(0), []);
@@ -115,11 +136,21 @@ export function GameProvider({ children }) {
     setScore(0);
     setLastResult(null);
     setTimeLeft(ROUND_TIME);
+    setRevealed([]);
     setCurrentCountry((prev) => pickRandom(countries, prev));
     setStatus('playing');
   }, [countries, playerName]);
 
   const backToStart = useCallback(() => setStatus('start'), []);
+
+  // Pista pedida por el jugador: revela una letra y resta HINT_PENALTY segundos
+  const requestHint = useCallback(() => {
+    if (status !== 'playing' || !currentCountry) return;
+    const next = revealLetter(currentCountry.name, revealed);
+    if (next === revealed) return; // no quedan letras para revelar
+    setRevealed(next);
+    setTimeLeft((t) => Math.max(0, t - HINT_PENALTY));
+  }, [status, currentCountry, revealed]);
 
   const guess = useCallback(
     (text) => {
@@ -139,6 +170,16 @@ export function GameProvider({ children }) {
     [status, currentCountry, timeLeft, nextCountry]
   );
 
+  // Nombre enmascarado: "_ r _ e n _ i n _"
+  const maskedName = currentCountry
+    ? currentCountry.name
+        .split('')
+        .map((ch, i) =>
+          ch === ' ' ? '/' : isLetter(ch) && !revealed.includes(i) ? '_' : ch
+        )
+        .join(' ')
+    : '';
+
   const value = {
     countries,
     currentCountry,
@@ -149,6 +190,9 @@ export function GameProvider({ children }) {
     status,
     timeLeft,
     ROUND_TIME,
+    HINT_EVERY,
+    HINT_PENALTY,
+    maskedName,
     playerName,
     ranking,
     setPlayerName,
@@ -157,6 +201,7 @@ export function GameProvider({ children }) {
     resetScore,
     startGame,
     backToStart,
+    requestHint,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

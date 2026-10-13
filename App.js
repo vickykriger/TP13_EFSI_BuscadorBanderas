@@ -1,4 +1,5 @@
 import React from 'react';
+import Hints from './src/components/Hints';
 import {
   SafeAreaView,
   ScrollView,
@@ -62,6 +63,7 @@ function PlayingScreen() {
         <Timer />
       </View>
       <Flag />
+      <Hints />
       <GuessForm />
     </View>
   );
