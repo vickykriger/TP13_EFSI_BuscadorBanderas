@@ -6,6 +6,7 @@ import {
   Platform,
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
@@ -17,9 +18,79 @@ import Flag from './src/components/Flag';
 import GuessForm from './src/components/GuessForm';
 import ScoreBoard from './src/components/ScoreBoard';
 import Timer from './src/components/Timer';
+import Leaderboard from './src/components/Leaderboard';
+
+function StartScreen() {
+  const { playerName, setPlayerName, startGame } = useGame();
+  const canPlay = playerName.trim().length > 0;
+
+  return (
+    <View style={styles.center}>
+      <Text style={styles.title}>🌍 Buscador de Banderas</Text>
+      <Text style={styles.subtitle}>
+        Tenés 15 segundos por bandera. Si acertás, los segundos que sobran suman puntos.
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Tu nombre"
+        value={playerName}
+        onChangeText={setPlayerName}
+        maxLength={20}
+      />
+
+      <TouchableOpacity
+        style={[styles.playButton, !canPlay && styles.disabled]}
+        onPress={startGame}
+        disabled={!canPlay}
+      >
+        <Text style={styles.playText}>Jugar</Text>
+      </TouchableOpacity>
+
+      <View style={{ marginTop: 24, width: '100%' }}>
+        <Leaderboard />
+      </View>
+    </View>
+  );
+}
+
+function PlayingScreen() {
+  return (
+    <View>
+      <View style={styles.topBar}>
+        <ScoreBoard />
+        <Timer />
+      </View>
+      <Flag />
+      <GuessForm />
+    </View>
+  );
+}
+
+function GameOverScreen() {
+  const { score, startGame, backToStart } = useGame();
+
+  return (
+    <View style={styles.center}>
+      <Text style={styles.title}>⏰ ¡Se acabó el tiempo!</Text>
+      <Text style={styles.finalScore}>Puntaje final: {score}</Text>
+
+      <TouchableOpacity style={styles.playButton} onPress={startGame}>
+        <Text style={styles.playText}>Jugar de nuevo</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.linkButton} onPress={backToStart}>
+        <Text style={styles.linkText}>Cambiar de jugador</Text>
+      </TouchableOpacity>
+
+      <View style={{ marginTop: 20, width: '100%' }}>
+        <Leaderboard />
+      </View>
+    </View>
+  );
+}
 
 function Game() {
-  const { loading, error, status, score, startGame } = useGame();
+  const { loading, error, status } = useGame();
 
   if (loading) {
     return (
@@ -38,28 +109,9 @@ function Game() {
     );
   }
 
-  if (status === 'over') {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.title}>⏰ ¡Se acabó el tiempo!</Text>
-        <Text style={styles.finalScore}>Puntaje final: {score}</Text>
-        <TouchableOpacity style={styles.playButton} onPress={startGame}>
-          <Text style={styles.playText}>Jugar de nuevo</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  return (
-    <View>
-      <View style={styles.topBar}>
-        <ScoreBoard />
-        <Timer />
-      </View>
-      <Flag />
-      <GuessForm />
-    </View>
-  );
+  if (status === 'start') return <StartScreen />;
+  if (status === 'over') return <GameOverScreen />;
+  return <PlayingScreen />;
 }
 
 export default function App() {
@@ -94,7 +146,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   title: { fontSize: 26, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  finalScore: { fontSize: 22, marginVertical: 12 },
+  subtitle: { fontSize: 15, color: '#555', textAlign: 'center', marginBottom: 20 },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#bbb',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
   playButton: {
     backgroundColor: '#2563eb',
     paddingVertical: 14,
@@ -102,6 +163,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 16,
   },
+  disabled: { opacity: 0.4 },
   playText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  linkButton: { marginTop: 12, padding: 8 },
+  linkText: { color: '#2563eb', fontSize: 15 },
+  finalScore: { fontSize: 22, marginVertical: 12 },
   errorText: { color: '#c0392b', fontSize: 16, textAlign: 'center' },
 });
