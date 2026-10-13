@@ -1,5 +1,4 @@
 import React from 'react';
-import Hints from './src/components/Hints';
 import {
   SafeAreaView,
   ScrollView,
@@ -17,12 +16,20 @@ import { StatusBar } from 'expo-status-bar';
 import { GameProvider, useGame } from './src/context/GameContext';
 import Flag from './src/components/Flag';
 import GuessForm from './src/components/GuessForm';
+import CapitalOptions from './src/components/CapitalOptions';
 import ScoreBoard from './src/components/ScoreBoard';
 import Timer from './src/components/Timer';
+import Hints from './src/components/Hints';
 import Leaderboard from './src/components/Leaderboard';
 
+const MODES = [
+  ['flags', '🚩 Banderas'],
+  ['capitals', '🏛️ Capitales'],
+];
+
 function StartScreen() {
-  const { playerName, setPlayerName, startGame } = useGame();
+  const { playerName, setPlayerName, mode, setMode, capitalsAvailable, startGame } =
+    useGame();
   const canPlay = playerName.trim().length > 0;
 
   return (
@@ -40,6 +47,29 @@ function StartScreen() {
         maxLength={20}
       />
 
+      <View style={styles.modeRow}>
+        {MODES.map(([m, label]) => {
+          const disabled = m === 'capitals' && !capitalsAvailable;
+          const active = mode === m;
+          return (
+            <TouchableOpacity
+              key={m}
+              disabled={disabled}
+              style={[
+                styles.modeBtn,
+                active && styles.modeActive,
+                disabled && styles.disabled,
+              ]}
+              onPress={() => setMode(m)}
+            >
+              <Text style={[styles.modeText, active && styles.modeTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <TouchableOpacity
         style={[styles.playButton, !canPlay && styles.disabled]}
         onPress={startGame}
@@ -56,6 +86,8 @@ function StartScreen() {
 }
 
 function PlayingScreen() {
+  const { mode } = useGame();
+
   return (
     <View>
       <View style={styles.topBar}>
@@ -64,7 +96,7 @@ function PlayingScreen() {
       </View>
       <Flag />
       <Hints />
-      <GuessForm />
+      {mode === 'flags' ? <GuessForm /> : <CapitalOptions />}
     </View>
   );
 }
@@ -81,7 +113,7 @@ function GameOverScreen() {
         <Text style={styles.playText}>Jugar de nuevo</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.linkButton} onPress={backToStart}>
-        <Text style={styles.linkText}>Cambiar de jugador</Text>
+        <Text style={styles.linkText}>Cambiar jugador o modo</Text>
       </TouchableOpacity>
 
       <View style={{ marginTop: 20, width: '100%' }}>
@@ -158,6 +190,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fff',
   },
+  modeRow: { flexDirection: 'row', gap: 10, marginTop: 14, width: '100%' },
+  modeBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  modeActive: { backgroundColor: '#2563eb' },
+  modeText: { color: '#2563eb', fontWeight: 'bold' },
+  modeTextActive: { color: '#fff' },
   playButton: {
     backgroundColor: '#2563eb',
     paddingVertical: 14,

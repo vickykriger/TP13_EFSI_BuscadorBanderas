@@ -3,16 +3,19 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
 
 export default function Leaderboard() {
-  const { ranking, playerName } = useGame();
+  const { ranking, mode, playerName } = useGame();
+  const list = ranking[mode] || [];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🏆 Tabla de posiciones</Text>
+      <Text style={styles.title}>
+        🏆 Ranking {mode === 'flags' ? 'Banderas' : 'Capitales'}
+      </Text>
 
-      {ranking.length === 0 ? (
+      {list.length === 0 ? (
         <Text style={styles.empty}>Todavía no hay partidas jugadas</Text>
       ) : (
-        ranking.map((p, i) => {
+        list.map((p, i) => {
           const me = p.name.toLowerCase() === playerName.trim().toLowerCase();
           return (
             <View key={p.name} style={[styles.row, me && styles.me]}>

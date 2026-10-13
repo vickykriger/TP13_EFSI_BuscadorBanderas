@@ -3,12 +3,18 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useGame } from '../context/GameContext';
 
 export default function Hints() {
-  const { maskedName, requestHint, HINT_EVERY, HINT_PENALTY } = useGame();
+  const { mode, maskedName, requestHint, HINT_EVERY, HINT_PENALTY } = useGame();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.mask}>{maskedName}</Text>
-      <Text style={styles.info}>Cada {HINT_EVERY}s se revela una letra</Text>
+      {mode === 'flags' ? (
+        <>
+          <Text style={styles.mask}>{maskedName}</Text>
+          <Text style={styles.info}>Cada {HINT_EVERY}s se revela una letra</Text>
+        </>
+      ) : (
+        <Text style={styles.info}>Cada {HINT_EVERY}s se elimina una opción</Text>
+      )}
       <TouchableOpacity style={styles.button} onPress={requestHint}>
         <Text style={styles.buttonText}>💡 Pedir pista (−{HINT_PENALTY}s)</Text>
       </TouchableOpacity>
