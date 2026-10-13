@@ -1,32 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useGame, normalize } from '../context/GameContext';
 
 export default function GuessForm() {
-  const {
-    countries,
-    guess,
-    useHint,
-    hintLevel,
-    hintText,
-    lastResult,
-    HINT_COST,
-  } = useGame();
+  const { countries, guess, lastResult } = useGame();
   const [text, setText] = useState('');
 
-  // Sugerencias mientras escribe (máx. 5)
   const suggestions = useMemo(() => {
     const q = normalize(text);
     if (!q) return [];
-    return countries
-      .filter((c) => normalize(c.name).includes(q))
-      .slice(0, 5);
+    return countries.filter((c) => normalize(c.name).includes(q)).slice(0, 5);
   }, [text, countries]);
 
   const submit = (value) => {
@@ -67,35 +50,18 @@ export default function GuessForm() {
         <Text
           style={[
             styles.feedback,
-            { color: lastResult === 'correct' ? '#1b8a3a' : '#c0392b' },
+            { color: lastResult.type === 'correct' ? '#1b8a3a' : '#c0392b' },
           ]}
         >
-          {lastResult === 'correct' ? '¡Correcto! +10' : 'Incorrecto −1'}
+          {lastResult.type === 'correct' ? '¡Correcto!' : 'Incorrecto'}{' '}
+          {lastResult.points > 0 ? '+' : ''}
+          {lastResult.points}
         </Text>
       )}
 
-      {!!hintText && <Text style={styles.hint}>💡 {hintText}</Text>}
-
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={[styles.button, styles.primary]}
-          onPress={() => submit()}
-        >
-          <Text style={styles.buttonText}>Adivinar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.secondary,
-            hintLevel >= 2 && styles.disabled,
-          ]}
-          onPress={useHint}
-          disabled={hintLevel >= 2}
-        >
-          <Text style={styles.buttonText}>Pista (−{HINT_COST})</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.button} onPress={() => submit()}>
+        <Text style={styles.buttonText}>Adivinar</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -124,11 +90,12 @@ const styles = StyleSheet.create({
   },
   suggestionText: { fontSize: 15 },
   feedback: { textAlign: 'center', marginTop: 10, fontWeight: 'bold', fontSize: 16 },
-  hint: { textAlign: 'center', marginTop: 8, color: '#555', fontSize: 15 },
-  row: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  button: { flex: 1, padding: 13, borderRadius: 10, alignItems: 'center' },
-  primary: { backgroundColor: '#2563eb' },
-  secondary: { backgroundColor: '#f59e0b' },
-  disabled: { opacity: 0.4 },
+  button: {
+    marginTop: 14,
+    padding: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+  },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 });

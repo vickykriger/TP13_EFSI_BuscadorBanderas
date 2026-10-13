@@ -10,7 +10,6 @@ export default function Flag() {
   const { currentCountry } = useGame();
   const [svgFailed, setSvgFailed] = useState(false);
 
-  // Si cambia el país, reintenta con el SVG original
   useEffect(() => {
     setSvgFailed(false);
   }, [currentCountry]);
@@ -19,8 +18,6 @@ export default function Flag() {
 
   const { flag, iso2 } = currentCountry;
   const isSvg = typeof flag === 'string' && flag.toLowerCase().includes('.svg');
-
-  // Fallback PNG si el SVG falla
   const fallbackUri = iso2
     ? `https://flagcdn.com/w320/${iso2.toLowerCase()}.png`
     : flag;
